@@ -18,7 +18,8 @@ export function createInitialState(storage: StorageService): AppState {
     draftUrl: '',
     inputExpanded: false,
     draftPreviewStatus: 'idle' as const,
-    popoverGifId: null,
+    editMode: false,
+    selectedGifIds: [],
     confirmDeleteId: null,
     toast: null,
     lastAddDuplicate: false,
@@ -41,7 +42,7 @@ export function reduce(state: AppState, action: Action): AppState {
     }
     case 'UPDATE_TAG': {
       const library = updateTag(state.library, action.payload.id, action.payload.tag);
-      return { ...state, library, popoverGifId: null };
+      return { ...state, library };
     }
     case 'SET_ACTIVE_TAG': {
       const activeTag = state.activeTag === action.payload ? null : action.payload;
@@ -55,8 +56,30 @@ export function reduce(state: AppState, action: Action): AppState {
         : { ...state, inputExpanded: false, draftPreviewStatus: 'idle' };
     case 'SET_DRAFT_PREVIEW_STATUS':
       return { ...state, draftPreviewStatus: action.payload };
-    case 'SHOW_POPOVER':
-      return { ...state, popoverGifId: action.payload };
+    case 'TOGGLE_EDIT_MODE':
+      return { ...state, editMode: !state.editMode, selectedGifIds: [] };
+    case 'ENTER_EDIT_MODE':
+      return { ...state, editMode: true, selectedGifIds: [action.payload] };
+    case 'SELECT_GIF': {
+      const id = action.payload;
+      const selected = state.selectedGifIds.includes(id)
+        ? state.selectedGifIds.filter(gid => gid !== id)
+        : [...state.selectedGifIds, id];
+      return { ...state, selectedGifIds: selected };
+    }
+    case 'ASSIGN_TAG': {
+      const tag = action.payload;
+      const selectedSet = new Set(state.selectedGifIds);
+      const gifs = state.library.gifs.map(g =>
+        selectedSet.has(g.id) ? { ...g, tag } : g
+      );
+      return {
+        ...state,
+        library: { ...state.library, gifs },
+        selectedGifIds: [],
+        editMode: false,
+      };
+    }
     case 'SHOW_CONFIRM_DELETE':
       return { ...state, confirmDeleteId: action.payload };
     case 'SHOW_TOAST': {
@@ -91,7 +114,8 @@ export function reduce(state: AppState, action: Action): AppState {
       return {
         ...state,
         aboutMode: !state.aboutMode,
-        popoverGifId: null,
+        editMode: false,
+        selectedGifIds: [],
         inputExpanded: false,
         draftUrl: '',
         draftPreviewStatus: 'idle',

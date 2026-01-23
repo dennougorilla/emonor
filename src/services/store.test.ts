@@ -42,7 +42,8 @@ describe('reduce', () => {
     draftUrl: '',
     inputExpanded: false,
     draftPreviewStatus: 'idle',
-    popoverGifId: null,
+    editMode: false,
+    selectedGifIds: [],
     confirmDeleteId: null,
     toast: null,
     lastAddDuplicate: false,
@@ -122,7 +123,6 @@ describe('reduce', () => {
     });
 
     expect(next.library.gifs[0].tag).toBe('🔥');
-    expect(next.popoverGifId).toBeNull();
   });
 
   it('SET_ACTIVE_TAG toggles filter', () => {
@@ -180,9 +180,65 @@ describe('reduce', () => {
     expect(next.draftPreviewStatus).toBe('idle');
   });
 
-  it('SHOW_POPOVER sets popover gif id', () => {
-    const next = reduce(baseState, { type: 'SHOW_POPOVER', payload: 'gif-1' });
-    expect(next.popoverGifId).toBe('gif-1');
+  it('TOGGLE_EDIT_MODE toggles editMode and clears selection', () => {
+    const next = reduce(baseState, { type: 'TOGGLE_EDIT_MODE' });
+    expect(next.editMode).toBe(true);
+    expect(next.selectedGifIds).toEqual([]);
+
+    const withSelection = { ...next, selectedGifIds: ['gif-1', 'gif-2'] };
+    const toggled = reduce(withSelection, { type: 'TOGGLE_EDIT_MODE' });
+    expect(toggled.editMode).toBe(false);
+    expect(toggled.selectedGifIds).toEqual([]);
+  });
+
+  it('ENTER_EDIT_MODE sets editMode true with gif pre-selected', () => {
+    const next = reduce(baseState, { type: 'ENTER_EDIT_MODE', payload: 'gif-1' });
+    expect(next.editMode).toBe(true);
+    expect(next.selectedGifIds).toEqual(['gif-1']);
+  });
+
+  it('ENTER_EDIT_MODE replaces previous selection', () => {
+    const withSelection: AppState = {
+      ...baseState,
+      editMode: true,
+      selectedGifIds: ['gif-2', 'gif-3'],
+    };
+    const next = reduce(withSelection, { type: 'ENTER_EDIT_MODE', payload: 'gif-1' });
+    expect(next.editMode).toBe(true);
+    expect(next.selectedGifIds).toEqual(['gif-1']);
+  });
+
+  it('SELECT_GIF toggles gif id in selectedGifIds', () => {
+    const next = reduce(baseState, { type: 'SELECT_GIF', payload: 'gif-1' });
+    expect(next.selectedGifIds).toEqual(['gif-1']);
+
+    const next2 = reduce(next, { type: 'SELECT_GIF', payload: 'gif-2' });
+    expect(next2.selectedGifIds).toEqual(['gif-1', 'gif-2']);
+
+    const next3 = reduce(next2, { type: 'SELECT_GIF', payload: 'gif-1' });
+    expect(next3.selectedGifIds).toEqual(['gif-2']);
+  });
+
+  it('ASSIGN_TAG updates tag, clears selection, and exits edit mode', () => {
+    const stateWithGifs: AppState = {
+      ...baseState,
+      editMode: true,
+      library: createLibrary({
+        gifs: [
+          { id: 'a', url: 'https://i.imgur.com/a.gif', tag: '📂' },
+          { id: 'b', url: 'https://i.imgur.com/b.gif', tag: '📂' },
+          { id: 'c', url: 'https://i.imgur.com/c.gif', tag: '😂' },
+        ],
+      }),
+      selectedGifIds: ['a', 'b'],
+    };
+
+    const next = reduce(stateWithGifs, { type: 'ASSIGN_TAG', payload: '🔥' });
+    expect(next.library.gifs[0].tag).toBe('🔥');
+    expect(next.library.gifs[1].tag).toBe('🔥');
+    expect(next.library.gifs[2].tag).toBe('😂');
+    expect(next.selectedGifIds).toEqual([]);
+    expect(next.editMode).toBe(false);
   });
 
   it('SHOW_CONFIRM_DELETE sets confirm delete id', () => {
@@ -307,7 +363,8 @@ describe('reduce', () => {
   it('TOGGLE_ABOUT closes open UI elements and resets preview status', () => {
     const openState: AppState = {
       ...baseState,
-      popoverGifId: 'gif-1',
+      editMode: true,
+      selectedGifIds: ['gif-1'],
       inputExpanded: true,
       draftUrl: 'https://test.com',
       draftPreviewStatus: 'loaded',
@@ -315,7 +372,8 @@ describe('reduce', () => {
     };
 
     const next = reduce(openState, { type: 'TOGGLE_ABOUT' });
-    expect(next.popoverGifId).toBeNull();
+    expect(next.editMode).toBe(false);
+    expect(next.selectedGifIds).toEqual([]);
     expect(next.inputExpanded).toBe(false);
     expect(next.draftUrl).toBe('');
     expect(next.draftPreviewStatus).toBe('idle');

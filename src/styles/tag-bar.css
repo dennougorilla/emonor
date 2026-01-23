@@ -44,6 +44,11 @@
   pointer-events: none;
 }
 
+.tag-bar--edit-mode {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-subtle);
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .tag-bar {

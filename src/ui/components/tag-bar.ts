@@ -17,6 +17,7 @@ export function createTagBar(store: Store): Component {
   let prevActiveTag: string | null = null;
   let prevTags: readonly { emoji: string }[] = [];
   let prevAboutMode = false;
+  let prevEditMode = false;
 
   function render(): void {
     const state = store.getState();
@@ -25,6 +26,12 @@ export function createTagBar(store: Store): Component {
     if (state.aboutMode !== prevAboutMode) {
       prevAboutMode = state.aboutMode;
       el.classList.toggle('tag-bar--disabled', state.aboutMode);
+    }
+
+    // Edit mode styling
+    if (state.editMode !== prevEditMode) {
+      prevEditMode = state.editMode;
+      el.classList.toggle('tag-bar--edit-mode', state.editMode);
     }
 
     // Only rebuild chips when tags array changes
@@ -38,13 +45,24 @@ export function createTagBar(store: Store): Component {
         chip.setAttribute('aria-label', tag.label);
         chip.textContent = tag.emoji;
         chip.addEventListener('click', () => {
-          store.dispatch({ type: 'SET_ACTIVE_TAG', payload: tag.emoji });
+          const currentState = store.getState();
+          if (currentState.editMode) {
+            if (currentState.selectedGifIds.length === 0) {
+              store.dispatch({ type: 'SHOW_TOAST', payload: { text: 'select GIFs first', variant: 'warning' } });
+              return;
+            }
+            const count = currentState.selectedGifIds.length;
+            store.dispatch({ type: 'ASSIGN_TAG', payload: tag.emoji });
+            store.dispatch({ type: 'SHOW_TOAST', payload: `tagged ${count} GIFs ${tag.emoji}` });
+          } else {
+            store.dispatch({ type: 'SET_ACTIVE_TAG', payload: tag.emoji });
+          }
         });
         el.appendChild(chip);
       }
     }
 
-    // Update active state
+    // Update active state (only relevant in normal mode)
     if (state.activeTag !== prevActiveTag) {
       prevActiveTag = state.activeTag;
       const chips = el.querySelectorAll('.tag-chip');

@@ -48,9 +48,10 @@ export function setupKeyboard(store: Store, config: KeyboardConfig): () => void 
       case 'Escape':
         if (state.aboutMode) {
           store.dispatch({ type: 'TOGGLE_ABOUT' });
+        } else if (state.editMode) {
+          store.dispatch({ type: 'TOGGLE_EDIT_MODE' });
         } else {
           store.dispatch({ type: 'SHOW_DATA_MODAL', payload: false });
-          store.dispatch({ type: 'SHOW_POPOVER', payload: null });
           store.dispatch({ type: 'SHOW_CONFIRM_DELETE', payload: null });
         }
         break;

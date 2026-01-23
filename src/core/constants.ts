@@ -10,9 +10,9 @@ export interface AboutCard {
 }
 
 export const ABOUT_CARDS: readonly AboutCard[] = [
-  { id: 'about-github', label: 'GitHub', emoji: '📦', gifUrl: 'https://media.giphy.com/media/du3J3cXyzhj75IOgvA/giphy.gif', linkUrl: 'https://github.com' },
-  { id: 'about-author', label: 'Author', emoji: '👤', gifUrl: 'https://media.giphy.com/media/13HgwGsXF0aiGY/giphy.gif', linkUrl: 'https://github.com' },
-  { id: 'about-support', label: 'Support', emoji: '💚', gifUrl: 'https://media.giphy.com/media/3oEjHV0z8S7WM4MwnK/giphy.gif', linkUrl: 'https://github.com' },
+  { id: 'about-github', label: 'GitHub', emoji: '📦', gifUrl: 'https://media.giphy.com/media/du3J3cXyzhj75IOgvA/giphy.gif', linkUrl: 'https://github.com/dennougorilla/Emonor' },
+  { id: 'about-author', label: 'Author', emoji: '👤', gifUrl: 'https://media.giphy.com/avatars/dennougorilla/cSwVq9JIhMfv/200h.gif', linkUrl: 'https://github.com/dennougorilla' },
+  { id: 'about-support', label: 'Support', emoji: '💚', gifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWFwM3NqNm85ZDVjdD1n/3oriO04qxVReM5rJEA/giphy.gif', linkUrl: 'https://github.com/sponsors/dennougorilla' },
 ] as const;
 
 // @specs/DOMAIN.md § 2.1 - Default tag set

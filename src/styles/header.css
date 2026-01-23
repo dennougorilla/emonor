@@ -52,6 +52,54 @@
   border-color: var(--accent);
 }
 
+/* Context action button (right-aligned) */
+.header__action-btn {
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease-out;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.header__action-btn:hover {
+  border-color: var(--accent);
+}
+
+.header__action-btn--confirm {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.header__action-btn--clear {
+  color: var(--text-muted);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.header__action-btn--add {
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Edit mode hint text */
+.header__edit-hint {
+  flex: 1;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+}
+
 /* @specs/DESIGN.md § 3.3 - Inline input area */
 .input-wrap {
   flex: 1;
