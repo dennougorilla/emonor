@@ -10,7 +10,8 @@ function createMockStore(overrides: Partial<AppState> = {}): Store {
     draftUrl: '',
     inputExpanded: false,
     draftPreviewStatus: 'idle',
-    popoverGifId: null,
+    editMode: false,
+    selectedGifIds: [],
     confirmDeleteId: null,
     toast: null,
     lastAddDuplicate: false,
@@ -99,14 +100,26 @@ describe('setupKeyboard', () => {
   });
 
   // @specs/INTERACTION.md § 4 - Escape closes modals
-  it('Escape closes popover and confirm dialog', () => {
+  it('Escape closes data modal and confirm dialog', () => {
     const store = createMockStore();
     cleanup = setupKeyboard(store, { onNewGif: vi.fn() });
 
     pressKey('Escape');
 
-    expect(store.dispatch).toHaveBeenCalledWith({ type: 'SHOW_POPOVER', payload: null });
+    expect(store.dispatch).toHaveBeenCalledWith({ type: 'SHOW_DATA_MODAL', payload: false });
     expect(store.dispatch).toHaveBeenCalledWith({ type: 'SHOW_CONFIRM_DELETE', payload: null });
+  });
+
+  it('Escape exits edit mode', () => {
+    const store = createMockStore({ editMode: true });
+    cleanup = setupKeyboard(store, { onNewGif: vi.fn() });
+
+    pressKey('Escape');
+
+    expect(store.dispatch).toHaveBeenCalledWith({ type: 'TOGGLE_EDIT_MODE' });
+    expect(store.dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SHOW_CONFIRM_DELETE' })
+    );
   });
 
   it('does not trigger shortcuts when typing in input', () => {
@@ -185,7 +198,7 @@ describe('setupKeyboard', () => {
 
     expect(store.dispatch).toHaveBeenCalledWith({ type: 'TOGGLE_ABOUT' });
     expect(store.dispatch).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'SHOW_POPOVER' })
+      expect.objectContaining({ type: 'SHOW_CONFIRM_DELETE' })
     );
   });
 

@@ -50,7 +50,8 @@ export interface AppState {
   readonly draftUrl: string;
   readonly inputExpanded: boolean;
   readonly draftPreviewStatus: DraftPreviewStatus;
-  readonly popoverGifId: string | null;
+  readonly editMode: boolean;
+  readonly selectedGifIds: readonly string[];
   readonly confirmDeleteId: string | null;
   readonly toast: ToastMessage | null;
   readonly lastAddDuplicate: boolean;
@@ -68,7 +69,10 @@ export type Action =
   | { readonly type: 'SET_ACTIVE_TAG'; readonly payload: string | null }
   | { readonly type: 'SET_DRAFT_URL'; readonly payload: string }
   | { readonly type: 'SET_INPUT_EXPANDED'; readonly payload: boolean }
-  | { readonly type: 'SHOW_POPOVER'; readonly payload: string | null }
+  | { readonly type: 'TOGGLE_EDIT_MODE' }
+  | { readonly type: 'ENTER_EDIT_MODE'; readonly payload: string }
+  | { readonly type: 'SELECT_GIF'; readonly payload: string }
+  | { readonly type: 'ASSIGN_TAG'; readonly payload: string }
   | { readonly type: 'SHOW_CONFIRM_DELETE'; readonly payload: string | null }
   | { readonly type: 'SHOW_TOAST'; readonly payload: string | { text: string; variant?: 'warning' } }
   | { readonly type: 'HIDE_TOAST' }

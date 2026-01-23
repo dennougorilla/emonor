@@ -7,7 +7,6 @@ import { createGifCard } from './gif-card';
 import { createAboutCard } from './about-card';
 import { createEmptyState } from './empty-state';
 import { createPreviewCard } from './preview-card';
-import { createPopover } from './popover';
 
 function clearElement(el: HTMLElement): void {
   while (el.firstChild) {
@@ -24,8 +23,9 @@ export function createGifGrid(store: Store, clipboard: ClipboardService): Compon
   let prevGifs: readonly GIF[] = [];
   let prevActiveTag: string | null | symbol = INITIAL;
   let prevDraftUrl = '';
-  let prevPopoverGifId: string | null | symbol = INITIAL;
   let prevAboutMode = false;
+  let prevEditMode = false;
+  let prevSelectedGifIds: readonly string[] = [];
   let childDestroys: (() => void)[] = [];
 
   function rebuild(): void {
@@ -62,26 +62,32 @@ export function createGifGrid(store: Store, clipboard: ClipboardService): Compon
       return;
     }
 
+    const selectedSet = new Set(state.selectedGifIds);
     for (const gif of visible) {
-      const card = createGifCard(gif, store, clipboard);
+      const card = createGifCard(gif, store, clipboard, selectedSet.has(gif.id));
       el.appendChild(card.element);
       childDestroys.push(card.destroy);
+    }
+  }
 
-      // Popover if active for this GIF (portal pattern to avoid CSS columns bug)
-      if (state.popoverGifId === gif.id) {
-        const popover = createPopover(gif, store);
-        const badge = card.element.querySelector('.gif-card__badge') as HTMLElement;
-        document.body.appendChild(popover.element);
+  // Lightweight selection update — toggles CSS classes without rebuilding DOM
+  function updateSelection(newIds: readonly string[], oldIds: readonly string[]): void {
+    const newSet = new Set(newIds);
+    const oldSet = new Set(oldIds);
 
-        // Position above badge using fixed coordinates
-        const badgeRect = badge.getBoundingClientRect();
-        popover.element.style.left = `${badgeRect.left}px`;
-        popover.element.style.top = `${badgeRect.top - popover.element.offsetHeight - 4}px`;
+    // Remove selection from cards no longer selected
+    for (const id of oldIds) {
+      if (!newSet.has(id)) {
+        const card = el.querySelector(`[data-gif-id="${id}"]`);
+        card?.classList.remove('gif-card--selected');
+      }
+    }
 
-        childDestroys.push(() => {
-          popover.destroy();
-          popover.element.remove();
-        });
+    // Add selection to newly selected cards
+    for (const id of newIds) {
+      if (!oldSet.has(id)) {
+        const card = el.querySelector(`[data-gif-id="${id}"]`);
+        card?.classList.add('gif-card--selected');
       }
     }
   }
@@ -90,16 +96,21 @@ export function createGifGrid(store: Store, clipboard: ClipboardService): Compon
     const gifsChanged = state.library.gifs !== prevGifs;
     const tagChanged = state.activeTag !== prevActiveTag;
     const draftChanged = state.draftUrl !== prevDraftUrl;
-    const popoverChanged = state.popoverGifId !== prevPopoverGifId;
     const aboutChanged = state.aboutMode !== prevAboutMode;
+    const editModeChanged = state.editMode !== prevEditMode;
+    const selectionChanged = state.selectedGifIds !== prevSelectedGifIds;
 
-    if (gifsChanged || tagChanged || draftChanged || popoverChanged || aboutChanged) {
+    if (gifsChanged || tagChanged || draftChanged || aboutChanged || editModeChanged) {
       prevGifs = state.library.gifs;
       prevActiveTag = state.activeTag;
       prevDraftUrl = state.draftUrl;
-      prevPopoverGifId = state.popoverGifId;
       prevAboutMode = state.aboutMode;
+      prevEditMode = state.editMode;
+      prevSelectedGifIds = state.selectedGifIds;
       rebuild();
+    } else if (selectionChanged) {
+      updateSelection(state.selectedGifIds, prevSelectedGifIds);
+      prevSelectedGifIds = state.selectedGifIds;
     }
   });
 

@@ -5,7 +5,6 @@ import './styles/header.css';
 import './styles/tag-bar.css';
 import './styles/gif-card.css';
 import './styles/grid.css';
-import './styles/popover.css';
 import './styles/toast.css';
 import './styles/dialog.css';
 import './styles/empty.css';
