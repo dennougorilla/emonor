@@ -1,0 +1,91 @@
+/* @specs/DESIGN.md § 3.4 - GIF Card */
+.gif-card {
+  position: relative;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 150ms ease-out;
+  break-inside: avoid;
+  margin-bottom: 6px;
+}
+
+.gif-card:hover {
+  border-color: var(--accent);
+}
+
+.gif-card__image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* @specs/DESIGN.md § 3.5 - Tag badge */
+.gif-card__badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--border-strong);
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gif-card__badge:hover {
+  transform: scale(1.15);
+}
+
+/* @specs/DESIGN.md § 3.6 - Delete button */
+.gif-card__delete {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease-out, transform 100ms ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gif-card:hover .gif-card__delete {
+  opacity: 1;
+}
+
+.gif-card__delete:hover {
+  transform: scale(1.15);
+}
+
+/* About card variant */
+.gif-card--about {
+  display: block;
+  text-decoration: none;
+}
+
+.gif-card__about-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}

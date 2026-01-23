@@ -1,0 +1,114 @@
+/* @specs/DESIGN.md § 3.1 - Header */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.header__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+}
+
+.header__logo {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+
+.header__logo--active {
+  color: var(--accent);
+}
+
+.header__data-btn {
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease-out;
+  flex-shrink: 0;
+}
+
+.header__data-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* @specs/DESIGN.md § 3.3 - Inline input area */
+.input-wrap {
+  flex: 1;
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: all 150ms ease-out;
+  cursor: text;
+}
+
+.input-wrap--expanded {
+  background: var(--accent-subtle);
+  border-color: var(--border-default);
+}
+
+.input-wrap__prompt {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.input-wrap__field {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.input-wrap__field::placeholder {
+  color: var(--text-ghost);
+  font-size: 12px;
+}
+
+.input-wrap__hint {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.input-wrap__collapsed {
+  color: var(--text-ghost);
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .header__top {
+    padding: 12px 12px;
+    gap: 8px;
+  }
+
+  .header__logo {
+    font-size: 14px;
+  }
+}
+

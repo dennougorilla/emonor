@@ -1,0 +1,20 @@
+/* @specs/INTERACTION.md § 1.3 - Masonry grid (CSS columns) */
+.gif-grid {
+  padding: 12px 24px;
+  column-gap: 6px;
+  columns: 5;
+}
+
+/* @specs/INTERACTION.md § 6 - Responsive columns */
+@media (max-width: 1024px) {
+  .gif-grid {
+    columns: 3;
+  }
+}
+
+@media (max-width: 640px) {
+  .gif-grid {
+    columns: 2;
+    padding: 12px 12px;
+  }
+}
