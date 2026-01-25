@@ -117,11 +117,6 @@
   border-color: var(--accent);
 }
 
-.data-modal__textarea--config {
-  min-height: 120px;
-  max-height: 180px;
-}
-
 /* Stats line */
 .data-modal__stats {
   font-size: 12px;

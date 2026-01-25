@@ -19,6 +19,7 @@ import { createClipboardService } from './services/clipboard';
 import { setupKeyboard } from './services/keyboard';
 import { createApp } from './ui/app';
 import { DEFAULT_ACCENT_COLOR, DEFAULT_FILTER_SIZE, FILTER_SIZE_VALUES } from './core/config-types';
+import { isValidHexColor, isValidFilterSize } from './core/config-validators';
 
 // Convert hex color to RGB for CSS rgba() usage
 function hexToRgb(hex: string): string {
@@ -32,8 +33,13 @@ function hexToRgb(hex: string): string {
 // Apply configuration from Library to CSS variables
 function applyLibraryConfig(library: Library): void {
   const root = document.documentElement;
-  const accentColor = library.accentColor ?? DEFAULT_ACCENT_COLOR;
-  const filterSize = library.filterSize ?? DEFAULT_FILTER_SIZE;
+
+  // Validate config values, falling back to defaults for invalid data
+  const rawAccentColor = library.accentColor ?? DEFAULT_ACCENT_COLOR;
+  const accentColor = isValidHexColor(rawAccentColor) ? rawAccentColor : DEFAULT_ACCENT_COLOR;
+
+  const rawFilterSize = library.filterSize ?? DEFAULT_FILTER_SIZE;
+  const filterSize = isValidFilterSize(rawFilterSize) ? rawFilterSize : DEFAULT_FILTER_SIZE;
 
   // Apply accent color
   const rgb = hexToRgb(accentColor);
