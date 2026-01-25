@@ -1,5 +1,6 @@
 import type { Library, ImportPreview } from './types';
 import { SYSTEM_TAG_EMOJI } from './constants';
+import { isValidHexColor, isValidFilterSize } from './config-validators';
 
 // @specs/DOMAIN.md § 5.3 - Import replace logic
 export function replaceImport(imported: Library): Library {
@@ -17,7 +18,14 @@ export function replaceImport(imported: Library): Library {
     validEmojis.has(g.tag) ? g : { ...g, tag: SYSTEM_TAG_EMOJI }
   );
 
-  return { version: '1.0', tags: [...tags], gifs };
+  // Preserve config fields if valid
+  return {
+    version: '1.0',
+    tags: [...tags],
+    gifs,
+    ...(imported.accentColor && isValidHexColor(imported.accentColor) && { accentColor: imported.accentColor }),
+    ...(imported.filterSize && isValidFilterSize(imported.filterSize) && { filterSize: imported.filterSize }),
+  };
 }
 
 // @specs/DOMAIN.md § 3.7 - Export
@@ -51,6 +59,19 @@ export function parseImport(json: string): Library {
   }
   if (!('gifs' in data) || !Array.isArray(data.gifs)) {
     throw new Error('Missing or invalid gifs field');
+  }
+
+  // Validate optional config fields if present
+  if ('accentColor' in data && data.accentColor !== undefined) {
+    if (!isValidHexColor(data.accentColor)) {
+      throw new Error('Invalid accentColor (use #RGB or #RRGGBB)');
+    }
+  }
+
+  if ('filterSize' in data && data.filterSize !== undefined) {
+    if (!isValidFilterSize(data.filterSize)) {
+      throw new Error('Invalid filterSize (use small/medium/large)');
+    }
   }
 
   return data as Library;

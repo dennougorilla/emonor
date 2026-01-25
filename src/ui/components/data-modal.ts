@@ -116,6 +116,15 @@ export function createDataModal(store: Store, clipboard: ClipboardService): Comp
   let prevOpen = false;
   let prevTab: 'edit' | 'import' = 'edit';
 
+  function deactivateAllTabs(): void {
+    exportTab.classList.remove('data-modal__tab--active');
+    exportTab.setAttribute('aria-selected', 'false');
+    importTab.classList.remove('data-modal__tab--active');
+    importTab.setAttribute('aria-selected', 'false');
+    exportComp.element.style.display = 'none';
+    importComp.element.style.display = 'none';
+  }
+
   const unsubscribe = store.subscribe((state) => {
     // Open/close
     if (state.dataModalOpen !== prevOpen) {
@@ -132,21 +141,17 @@ export function createDataModal(store: Store, clipboard: ClipboardService): Comp
     // Tab switch
     if (state.dataModalTab !== prevTab) {
       prevTab = state.dataModalTab;
+      deactivateAllTabs();
+
       if (state.dataModalTab === 'edit') {
         exportComp.element.style.display = '';
-        importComp.element.style.display = 'none';
         exportTab.classList.add('data-modal__tab--active');
         exportTab.setAttribute('aria-selected', 'true');
-        importTab.classList.remove('data-modal__tab--active');
-        importTab.setAttribute('aria-selected', 'false');
         exportComp.refresh();
       } else {
-        exportComp.element.style.display = 'none';
         importComp.element.style.display = '';
         importTab.classList.add('data-modal__tab--active');
         importTab.setAttribute('aria-selected', 'true');
-        exportTab.classList.remove('data-modal__tab--active');
-        exportTab.setAttribute('aria-selected', 'false');
         importComp.reset();
       }
     }
