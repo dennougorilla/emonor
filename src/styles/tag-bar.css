@@ -13,14 +13,14 @@
 }
 
 .tag-chip {
-  height: 38px;
-  min-width: 38px;
-  padding: 0 12px;
+  height: var(--filter-height);
+  min-width: var(--filter-height);
+  padding: 0 var(--filter-padding-x);
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
-  font-size: 18px;
+  font-size: var(--filter-emoji-size);
   cursor: pointer;
   transition: all 120ms ease-out;
   flex-shrink: 0;

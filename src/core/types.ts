@@ -26,11 +26,16 @@ export interface ImportPreview {
   readonly parsedLibrary: Library;
 }
 
-// @specs/DOMAIN.md § 5.1 - Persistence format
+// Filter size options for tag bar
+export type FilterSize = 'small' | 'medium' | 'large';
+
+// @specs/DOMAIN.md § 5.1 - Persistence format (includes optional config fields)
 export interface Library {
   readonly version: '1.0';
   readonly tags: readonly EmojiTag[];
   readonly gifs: readonly GIF[];
+  readonly accentColor?: string;      // Optional: #RGB or #RRGGBB
+  readonly filterSize?: FilterSize;   // Optional: small/medium/large
 }
 
 // @specs/INTERACTION.md § 2.6 - Toast notification
