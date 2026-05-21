@@ -5,9 +5,9 @@
   "description": "Emoji-tagged personal GIF library with one-click copy",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dennougorilla/Emonor"
+    "url": "https://github.com/dennougorilla/emonor"
   },
-  "homepage": "https://dennougorilla.github.io/Emonor/",
+  "homepage": "https://dennougorilla.github.io/emonor/",
   "license": "MIT",
   "keywords": ["gif", "emoji", "organizer", "pwa", "vanilla-typescript"],
   "scripts": {

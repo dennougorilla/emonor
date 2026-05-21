@@ -2,7 +2,7 @@
 
 Emoji-tagged personal GIF library with one-click copy.
 
-**[Live Demo →](https://dennougorilla.github.io/Emonor/)**
+**[Live Demo →](https://dennougorilla.github.io/emonor/)**
 
 ## Features
 
@@ -27,8 +27,8 @@ Emoji-tagged personal GIF library with one-click copy.
 ## Quick Start
 
 ```bash
-git clone https://github.com/dennougorilla/Emonor.git
-cd Emonor
+git clone https://github.com/dennougorilla/emonor.git
+cd emonor
 npm install
 npm run dev
 ```
