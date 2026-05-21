@@ -3,6 +3,8 @@ export interface GIF {
   readonly id: string;
   readonly url: string;
   readonly tag: string;
+  readonly width?: number;
+  readonly height?: number;
 }
 
 // @specs/DOMAIN.md § 2.1 - EmojiTag entity
@@ -71,6 +73,7 @@ export type Action =
   | { readonly type: 'ADD_GIF'; readonly payload: { url: string; tag: string } }
   | { readonly type: 'REMOVE_GIF'; readonly payload: string }
   | { readonly type: 'UPDATE_TAG'; readonly payload: { id: string; tag: string } }
+  | { readonly type: 'SET_GIF_DIMENSIONS'; readonly payload: { id: string; width: number; height: number } }
   | { readonly type: 'SET_ACTIVE_TAG'; readonly payload: string | null }
   | { readonly type: 'SET_DRAFT_URL'; readonly payload: string }
   | { readonly type: 'SET_INPUT_EXPANDED'; readonly payload: boolean }

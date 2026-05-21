@@ -1,6 +1,6 @@
 import type { AppState, Action, Store, Subscriber, StorageService, Library } from '../core/types';
 import { DEFAULT_TAGS } from '../core/constants';
-import { addGif, removeGif, updateTag } from '../core/gif-operations';
+import { addGif, removeGif, updateTag, setGifDimensions } from '../core/gif-operations';
 import { addCustomTag, removeCustomTag } from '../core/tag-operations';
 import { replaceImport } from '../core/import-export';
 
@@ -42,6 +42,15 @@ export function reduce(state: AppState, action: Action): AppState {
     }
     case 'UPDATE_TAG': {
       const library = updateTag(state.library, action.payload.id, action.payload.tag);
+      return { ...state, library };
+    }
+    case 'SET_GIF_DIMENSIONS': {
+      const library = setGifDimensions(
+        state.library,
+        action.payload.id,
+        action.payload.width,
+        action.payload.height,
+      );
       return { ...state, library };
     }
     case 'SET_ACTIVE_TAG': {

@@ -20,9 +20,22 @@ export function createGifCard(
 
   const img = document.createElement('img');
   img.className = 'gif-card__image';
-  img.src = gif.url;
   img.alt = '';
   img.loading = 'lazy';
+  img.decoding = 'async';
+  if (gif.width && gif.height) {
+    img.style.aspectRatio = `${gif.width} / ${gif.height}`;
+  } else {
+    img.addEventListener('load', () => {
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      if (w > 0 && h > 0) {
+        img.style.aspectRatio = `${w} / ${h}`;
+        store.dispatch({ type: 'SET_GIF_DIMENSIONS', payload: { id: gif.id, width: w, height: h } });
+      }
+    }, { once: true });
+  }
+  img.src = gif.url;
   el.appendChild(img);
 
   // Tag badge (click to enter edit mode for this GIF)

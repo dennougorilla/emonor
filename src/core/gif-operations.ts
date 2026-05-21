@@ -41,6 +41,37 @@ export function removeGif(library: Library, id: string): Library {
   };
 }
 
+// Stores naturalWidth/Height from <img> onload so cards can reserve aspect-ratio
+// space on subsequent renders (eliminates initial-load layout shift).
+export function setGifDimensions(
+  library: Library,
+  id: string,
+  width: number,
+  height: number,
+): Library {
+  if (
+    !Number.isInteger(width) || !Number.isInteger(height) ||
+    width <= 0 || height <= 0 ||
+    width >= 100000 || height >= 100000
+  ) {
+    return library;
+  }
+  const index = library.gifs.findIndex(g => g.id === id);
+  if (index === -1) {
+    return library;
+  }
+  const existing = library.gifs[index];
+  if (existing.width === width && existing.height === height) {
+    return library;
+  }
+  return {
+    ...library,
+    gifs: library.gifs.map(g =>
+      g.id === id ? { ...g, width, height } : g
+    ),
+  };
+}
+
 // @specs/DOMAIN.md § 3.4 - Tag change
 export function updateTag(library: Library, id: string, newTag: string): Library {
   const index = library.gifs.findIndex(g => g.id === id);

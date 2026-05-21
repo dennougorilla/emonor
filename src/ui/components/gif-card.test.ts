@@ -164,4 +164,67 @@ describe('createGifCard', () => {
     const card = createGifCard(testGif, createMockStore(), createMockClipboard(), false);
     expect(card.element.dataset.gifId).toBe('gif-1');
   });
+
+  // Layout stability: reserve aspect-ratio space before image loads
+  it('sets img.decoding to async', () => {
+    const card = createGifCard(testGif, createMockStore(), createMockClipboard(), false);
+    const img = card.element.querySelector('img') as HTMLImageElement;
+    expect(img.decoding).toBe('async');
+  });
+
+  it('sets inline aspect-ratio when gif has stored dimensions', () => {
+    const gifWithDims: GIF = { ...testGif, width: 320, height: 240 };
+    const card = createGifCard(gifWithDims, createMockStore(), createMockClipboard(), false);
+    const img = card.element.querySelector('img') as HTMLImageElement;
+    expect(img.style.aspectRatio).toBe('320 / 240');
+  });
+
+  it('does not set inline aspect-ratio when dimensions are unknown', () => {
+    const card = createGifCard(testGif, createMockStore(), createMockClipboard(), false);
+    const img = card.element.querySelector('img') as HTMLImageElement;
+    expect(img.style.aspectRatio).toBe('');
+  });
+
+  it('dispatches SET_GIF_DIMENSIONS on image load when dimensions unknown', () => {
+    const store = createMockStore();
+    const card = createGifCard(testGif, store, createMockClipboard(), false);
+    const img = card.element.querySelector('img') as HTMLImageElement;
+
+    Object.defineProperty(img, 'naturalWidth', { value: 480, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 270, configurable: true });
+    img.dispatchEvent(new Event('load'));
+
+    expect(store.dispatch).toHaveBeenCalledWith({
+      type: 'SET_GIF_DIMENSIONS',
+      payload: { id: 'gif-1', width: 480, height: 270 },
+    });
+    expect(img.style.aspectRatio).toBe('480 / 270');
+  });
+
+  it('does not dispatch SET_GIF_DIMENSIONS on image load when natural size is 0', () => {
+    const store = createMockStore();
+    const card = createGifCard(testGif, store, createMockClipboard(), false);
+    const img = card.element.querySelector('img') as HTMLImageElement;
+
+    Object.defineProperty(img, 'naturalWidth', { value: 0, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 0, configurable: true });
+    img.dispatchEvent(new Event('load'));
+
+    const calls = (store.dispatch as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls.some(([action]) => action.type === 'SET_GIF_DIMENSIONS')).toBe(false);
+  });
+
+  it('does not attach load listener when dimensions are already known', () => {
+    const gifWithDims: GIF = { ...testGif, width: 320, height: 240 };
+    const store = createMockStore();
+    const card = createGifCard(gifWithDims, store, createMockClipboard(), false);
+    const img = card.element.querySelector('img') as HTMLImageElement;
+
+    Object.defineProperty(img, 'naturalWidth', { value: 999, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 999, configurable: true });
+    img.dispatchEvent(new Event('load'));
+
+    const calls = (store.dispatch as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls.some(([action]) => action.type === 'SET_GIF_DIMENSIONS')).toBe(false);
+  });
 });
