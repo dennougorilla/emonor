@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addGif, removeGif, updateTag, filterByTag } from './gif-operations';
+import { addGif, removeGif, updateTag, filterByTag, setGifDimensions } from './gif-operations';
 import type { Library, GIF } from './types';
 import { DEFAULT_TAGS } from './constants';
 
@@ -139,6 +139,79 @@ describe('updateTag', () => {
 
     expect(result.gifs[0].id).toBe('target');
     expect(result.gifs[0].url).toBe('https://i.imgur.com/test.gif');
+  });
+});
+
+describe('setGifDimensions', () => {
+  it('sets width and height on matching gif', () => {
+    const gif = createGif({ id: 'target' });
+    const library = createLibrary([gif]);
+
+    const result = setGifDimensions(library, 'target', 320, 240);
+
+    expect(result.gifs[0].width).toBe(320);
+    expect(result.gifs[0].height).toBe(240);
+  });
+
+  it('leaves other gifs untouched', () => {
+    const target = createGif({ id: 'target' });
+    const other = createGif({ id: 'other', url: 'https://i.imgur.com/other.gif' });
+    const library = createLibrary([target, other]);
+
+    const result = setGifDimensions(library, 'target', 320, 240);
+
+    expect(result.gifs[1]).toBe(other);
+  });
+
+  it('returns same reference when id not found', () => {
+    const library = createLibrary([createGif()]);
+
+    const result = setGifDimensions(library, 'nonexistent', 320, 240);
+
+    expect(result).toBe(library);
+  });
+
+  it('returns same reference when dimensions are already equal', () => {
+    const gif = createGif({ id: 'target', width: 320, height: 240 });
+    const library = createLibrary([gif]);
+
+    const result = setGifDimensions(library, 'target', 320, 240);
+
+    expect(result).toBe(library);
+  });
+
+  it('returns same reference for non-positive dimensions', () => {
+    const library = createLibrary([createGif({ id: 'target' })]);
+
+    expect(setGifDimensions(library, 'target', 0, 240)).toBe(library);
+    expect(setGifDimensions(library, 'target', 320, 0)).toBe(library);
+    expect(setGifDimensions(library, 'target', -1, 240)).toBe(library);
+  });
+
+  it('returns same reference for non-integer dimensions', () => {
+    const library = createLibrary([createGif({ id: 'target' })]);
+
+    expect(setGifDimensions(library, 'target', 320.5, 240)).toBe(library);
+    expect(setGifDimensions(library, 'target', NaN, 240)).toBe(library);
+    expect(setGifDimensions(library, 'target', Infinity, 240)).toBe(library);
+  });
+
+  it('returns same reference for unrealistically large dimensions', () => {
+    const library = createLibrary([createGif({ id: 'target' })]);
+
+    expect(setGifDimensions(library, 'target', 100000, 240)).toBe(library);
+    expect(setGifDimensions(library, 'target', 320, 100000)).toBe(library);
+  });
+
+  it('does not mutate the original library', () => {
+    const gif = createGif({ id: 'target' });
+    const library = createLibrary([gif]);
+    const originalGifs = library.gifs;
+
+    setGifDimensions(library, 'target', 320, 240);
+
+    expect(library.gifs).toBe(originalGifs);
+    expect(library.gifs[0].width).toBeUndefined();
   });
 });
 

@@ -109,6 +109,39 @@ describe('reduce', () => {
     expect(next.confirmDeleteId).toBeNull();
   });
 
+  it('SET_GIF_DIMENSIONS stores width and height on matching gif', () => {
+    const stateWithGif: AppState = {
+      ...baseState,
+      library: createLibrary({
+        gifs: [{ id: 'x', url: 'https://i.imgur.com/x.gif', tag: '😂' }],
+      }),
+    };
+
+    const next = reduce(stateWithGif, {
+      type: 'SET_GIF_DIMENSIONS',
+      payload: { id: 'x', width: 320, height: 240 },
+    });
+
+    expect(next.library.gifs[0].width).toBe(320);
+    expect(next.library.gifs[0].height).toBe(240);
+  });
+
+  it('SET_GIF_DIMENSIONS no-op returns same library reference', () => {
+    const stateWithGif: AppState = {
+      ...baseState,
+      library: createLibrary({
+        gifs: [{ id: 'x', url: 'https://i.imgur.com/x.gif', tag: '😂' }],
+      }),
+    };
+
+    const next = reduce(stateWithGif, {
+      type: 'SET_GIF_DIMENSIONS',
+      payload: { id: 'nonexistent', width: 320, height: 240 },
+    });
+
+    expect(next.library).toBe(stateWithGif.library);
+  });
+
   it('UPDATE_TAG changes gif tag', () => {
     const stateWithGif: AppState = {
       ...baseState,
@@ -446,6 +479,34 @@ describe('createStore', () => {
     const store = createStore(storage);
 
     store.dispatch({ type: 'SET_ACTIVE_TAG', payload: '😂' });
+
+    expect(storage.save).not.toHaveBeenCalled();
+  });
+
+  it('persists SET_GIF_DIMENSIONS when dimensions change', () => {
+    const storage: StorageService = {
+      load: vi.fn(() => createLibrary({
+        gifs: [{ id: 'x', url: 'https://i.imgur.com/x.gif', tag: '😂' }],
+      })),
+      save: vi.fn(),
+    };
+    const store = createStore(storage);
+
+    store.dispatch({ type: 'SET_GIF_DIMENSIONS', payload: { id: 'x', width: 320, height: 240 } });
+
+    expect(storage.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not persist SET_GIF_DIMENSIONS for unknown gif id', () => {
+    const storage: StorageService = {
+      load: vi.fn(() => createLibrary({
+        gifs: [{ id: 'x', url: 'https://i.imgur.com/x.gif', tag: '😂' }],
+      })),
+      save: vi.fn(),
+    };
+    const store = createStore(storage);
+
+    store.dispatch({ type: 'SET_GIF_DIMENSIONS', payload: { id: 'nonexistent', width: 320, height: 240 } });
 
     expect(storage.save).not.toHaveBeenCalled();
   });

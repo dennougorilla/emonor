@@ -17,8 +17,9 @@
 
 .gif-card__image {
   width: 100%;
-  height: auto;
   display: block;
+  aspect-ratio: 1 / 1;
+  background: var(--bg-tertiary);
 }
 
 /* @specs/DESIGN.md § 3.5 - Tag badge */
