@@ -14,14 +14,25 @@ function clearElement(el: HTMLElement): void {
   }
 }
 
+/** Dimensions are metadata; they do not require replacing the rendered cards. */
+export function haveGifCardsChanged(previous: readonly GIF[], next: readonly GIF[]): boolean {
+  if (previous.length !== next.length) return true;
+  return previous.some((gif, index) => {
+    const candidate = next[index];
+    return !candidate ||
+      gif.id !== candidate.id ||
+      gif.url !== candidate.url ||
+      gif.tag !== candidate.tag;
+  });
+}
+
 // @specs/INTERACTION.md § 1.3 - Masonry grid
 export function createGifGrid(store: Store, clipboard: ClipboardService): Component {
   const el = document.createElement('div');
   el.className = 'gif-grid';
 
-  const INITIAL = Symbol('initial');
   let prevGifs: readonly GIF[] = [];
-  let prevActiveTag: string | null | symbol = INITIAL;
+  let prevActiveTag: string | null = null;
   let prevDraftUrl = '';
   let prevAboutMode = false;
   let prevEditMode = false;
@@ -74,26 +85,40 @@ export function createGifGrid(store: Store, clipboard: ClipboardService): Compon
   function updateSelection(newIds: readonly string[], oldIds: readonly string[]): void {
     const newSet = new Set(newIds);
     const oldSet = new Set(oldIds);
+    const findCard = (id: string): HTMLElement | undefined =>
+      Array.from(el.querySelectorAll<HTMLElement>('[data-gif-id]'))
+        .find(card => card.dataset.gifId === id);
 
     // Remove selection from cards no longer selected
     for (const id of oldIds) {
       if (!newSet.has(id)) {
-        const card = el.querySelector(`[data-gif-id="${id}"]`);
+        const card = findCard(id);
         card?.classList.remove('gif-card--selected');
+        card?.setAttribute('aria-pressed', 'false');
       }
     }
 
     // Add selection to newly selected cards
     for (const id of newIds) {
       if (!oldSet.has(id)) {
-        const card = el.querySelector(`[data-gif-id="${id}"]`);
+        const card = findCard(id);
         card?.classList.add('gif-card--selected');
+        card?.setAttribute('aria-pressed', 'true');
       }
     }
   }
 
+  rebuild();
+  const initialState = store.getState();
+  prevGifs = initialState.library.gifs;
+  prevActiveTag = initialState.activeTag;
+  prevDraftUrl = initialState.draftUrl;
+  prevAboutMode = initialState.aboutMode;
+  prevEditMode = initialState.editMode;
+  prevSelectedGifIds = initialState.selectedGifIds;
+
   const unsubscribe = store.subscribe((state) => {
-    const gifsChanged = state.library.gifs !== prevGifs;
+    const gifsChanged = haveGifCardsChanged(prevGifs, state.library.gifs);
     const tagChanged = state.activeTag !== prevActiveTag;
     const draftChanged = state.draftUrl !== prevDraftUrl;
     const aboutChanged = state.aboutMode !== prevAboutMode;
@@ -101,7 +126,6 @@ export function createGifGrid(store: Store, clipboard: ClipboardService): Compon
     const selectionChanged = state.selectedGifIds !== prevSelectedGifIds;
 
     if (gifsChanged || tagChanged || draftChanged || aboutChanged || editModeChanged) {
-      prevGifs = state.library.gifs;
       prevActiveTag = state.activeTag;
       prevDraftUrl = state.draftUrl;
       prevAboutMode = state.aboutMode;
@@ -112,9 +136,8 @@ export function createGifGrid(store: Store, clipboard: ClipboardService): Compon
       updateSelection(state.selectedGifIds, prevSelectedGifIds);
       prevSelectedGifIds = state.selectedGifIds;
     }
+    prevGifs = state.library.gifs;
   });
-
-  rebuild();
 
   return {
     element: el,

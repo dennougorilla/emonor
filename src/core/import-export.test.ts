@@ -126,6 +126,116 @@ describe('parseImport', () => {
     const invalid = JSON.stringify({ version: '1.0', tags: [] });
     expect(() => parseImport(invalid)).toThrow();
   });
+
+  it('rejects an unsupported version before import preview', () => {
+    const invalid = JSON.stringify({ version: '2.0', tags: [], gifs: [] });
+    expect(() => parseImport(invalid)).toThrow('Unsupported version');
+  });
+
+  it('rejects malformed tag and GIF members', () => {
+    expect(() => parseImport(JSON.stringify({
+      version: '1.0',
+      tags: [null],
+      gifs: [],
+    }))).toThrow('Invalid tag');
+
+    expect(() => parseImport(JSON.stringify({
+      version: '1.0',
+      tags: [{ emoji: '📂', label: 'Other' }],
+      gifs: [null],
+    }))).toThrow('Invalid GIF');
+  });
+
+  it('rejects duplicate tag emojis, GIF ids, and GIF URLs', () => {
+    expect(() => parseImport(JSON.stringify({
+      version: '1.0',
+      tags: [
+        { emoji: '📂', label: 'Other' },
+        { emoji: '📂', label: 'Duplicate' },
+      ],
+      gifs: [],
+    }))).toThrow('Duplicate tag');
+
+    const base = {
+      version: '1.0',
+      tags: [{ emoji: '📂', label: 'Other' }],
+    };
+    expect(() => parseImport(JSON.stringify({
+      ...base,
+      gifs: [
+        { id: 'same', url: 'https://i.imgur.com/a.gif', tag: '📂' },
+        { id: 'same', url: 'https://i.imgur.com/b.gif', tag: '📂' },
+      ],
+    }))).toThrow('Duplicate GIF id');
+
+    expect(() => parseImport(JSON.stringify({
+      ...base,
+      gifs: [
+        { id: 'a', url: 'https://i.imgur.com/a.gif', tag: '📂' },
+        { id: 'b', url: 'https://i.imgur.com/a.gif', tag: '📂' },
+      ],
+    }))).toThrow('Duplicate GIF URL');
+  });
+
+  it('rejects invalid URLs and incomplete dimensions', () => {
+    const base = {
+      version: '1.0',
+      tags: [{ emoji: '📂', label: 'Other' }],
+    };
+    expect(() => parseImport(JSON.stringify({
+      ...base,
+      gifs: [{ id: 'a', url: 'file:///tmp/a.gif', tag: '📂' }],
+    }))).toThrow('Invalid GIF URL');
+
+    expect(() => parseImport(JSON.stringify({
+      ...base,
+      gifs: [{ id: 'a', url: 'https://i.imgur.com/a.gif', tag: '📂', width: 320 }],
+    }))).toThrow('Incomplete GIF dimensions');
+  });
+
+  it('normalizes the system tag, dangling GIF tags, and whitespace', () => {
+    const result = parseImport(JSON.stringify({
+      version: '1.0',
+      tags: [{ emoji: '😂', label: ' Funny ' }],
+      gifs: [{ id: ' a ', url: ' https://i.imgur.com/a.gif ', tag: '🔥' }],
+    }));
+
+    expect(result.tags).toContainEqual({ emoji: '📂', label: 'Other' });
+    expect(result.tags[0].label).toBe('Funny');
+    expect(result.gifs[0]).toEqual(expect.objectContaining({
+      id: 'a',
+      url: 'https://i.imgur.com/a.gif',
+      tag: '📂',
+    }));
+  });
+
+  it('reserves one tag slot for the required system tag', () => {
+    const emojis = ['😂', '😭', '❤️', '🔥', '👍', '🙏', '🎮', '🎯', '🎨', '🎵', '🚀', '💡'];
+    expect(() => parseImport(JSON.stringify({
+      version: '1.0',
+      tags: emojis.map(emoji => ({ emoji, label: emoji })),
+      gifs: [],
+    }))).toThrow('Too many tags');
+  });
+
+  it('validates and preserves optional configuration', () => {
+    const result = parseImport(JSON.stringify({
+      version: '1.0',
+      tags: [{ emoji: '📂', label: 'Other' }],
+      gifs: [],
+      accentColor: '#abc',
+      filterSize: 'large',
+    }));
+    expect(result.accentColor).toBe('#abc');
+    expect(result.filterSize).toBe('large');
+
+    expect(() => parseImport(JSON.stringify({
+      version: '1.0', tags: [], gifs: [], accentColor: 'red',
+    }))).toThrow('Invalid accentColor');
+    expect(() => parseImport(JSON.stringify({
+      version: '1.0', tags: [], gifs: [], filterSize: 'huge',
+    }))).toThrow('Invalid filterSize');
+  });
 });
 
 describe('computeImportPreview', () => {

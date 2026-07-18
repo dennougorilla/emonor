@@ -21,6 +21,10 @@ export function isValidGifUrl(url: string): boolean {
     return false;
   }
 
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    return false;
+  }
+
   const pathname = parsedUrl.pathname.toLowerCase();
   const hasGifExtension = GIF_EXTENSIONS.some(ext => pathname.endsWith(ext));
 

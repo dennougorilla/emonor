@@ -16,7 +16,11 @@ export function createGifCard(
   }
   el.setAttribute('role', 'button');
   el.setAttribute('tabindex', '0');
-  el.setAttribute('aria-label', 'Copy GIF URL');
+  const initialEditMode = store.getState().editMode;
+  el.setAttribute('aria-label', initialEditMode ? 'Select GIF' : 'Copy GIF URL');
+  if (initialEditMode) {
+    el.setAttribute('aria-pressed', String(selected));
+  }
 
   const img = document.createElement('img');
   img.className = 'gif-card__image';
@@ -67,17 +71,33 @@ export function createGifCard(
   });
   el.appendChild(deleteBtn);
 
-  // Card click: edit mode = select, normal mode = copy URL
-  el.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('[data-no-copy]')) return;
+  function activateCard(): void {
     const state = store.getState();
     if (state.editMode) {
       store.dispatch({ type: 'SELECT_GIF', payload: gif.id });
-    } else {
-      clipboard.writeText(gif.url);
-      store.dispatch({ type: 'SHOW_TOAST', payload: 'copied to clipboard' });
+      return;
     }
+
+    void clipboard.writeText(gif.url)
+      .then(() => {
+        store.dispatch({ type: 'SHOW_TOAST', payload: 'copied to clipboard' });
+      })
+      .catch(() => {
+        store.dispatch({ type: 'SHOW_TOAST', payload: { text: 'copy failed', variant: 'warning' } });
+      });
+  }
+
+  // Card activation: edit mode = select, normal mode = copy URL
+  el.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-no-copy]')) return;
+    activateCard();
+  });
+
+  el.addEventListener('keydown', (e) => {
+    if (e.target !== el || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    activateCard();
   });
 
   return { element: el, destroy: () => {} };

@@ -44,6 +44,9 @@ export function createTagBar(store: Store): Component {
         chip.setAttribute('role', 'tab');
         chip.setAttribute('aria-label', tag.label);
         chip.textContent = tag.emoji;
+        const isActive = tag.emoji === state.activeTag;
+        chip.classList.toggle('tag-chip--active', isActive);
+        chip.setAttribute('aria-selected', String(isActive));
         chip.addEventListener('click', () => {
           const currentState = store.getState();
           if (currentState.editMode) {
@@ -52,7 +55,8 @@ export function createTagBar(store: Store): Component {
               return;
             }
             const count = currentState.selectedGifIds.length;
-            store.dispatch({ type: 'ASSIGN_TAG', payload: tag.emoji });
+            const persisted = store.dispatch({ type: 'ASSIGN_TAG', payload: tag.emoji });
+            if (persisted === false) return;
             store.dispatch({ type: 'SHOW_TOAST', payload: `tagged ${count} GIFs ${tag.emoji}` });
           } else {
             store.dispatch({ type: 'SET_ACTIVE_TAG', payload: tag.emoji });

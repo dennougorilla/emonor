@@ -55,7 +55,7 @@ describe('createGifCard', () => {
   });
 
   // Normal mode: Card click = URL copy
-  it('copies URL on card click in normal mode', () => {
+  it('copies URL on card click in normal mode', async () => {
     const store = createMockStore();
     const clipboard = createMockClipboard();
     const card = createGifCard(testGif, store, clipboard, false);
@@ -63,7 +63,29 @@ describe('createGifCard', () => {
     card.element.click();
 
     expect(clipboard.writeText).toHaveBeenCalledWith('https://i.imgur.com/test.gif');
+    await Promise.resolve();
     expect(store.dispatch).toHaveBeenCalledWith({
+      type: 'SHOW_TOAST',
+      payload: 'copied to clipboard',
+    });
+  });
+
+  it('shows a warning when clipboard writing fails', async () => {
+    const store = createMockStore();
+    const clipboard: ClipboardService = {
+      writeText: vi.fn(() => Promise.reject(new Error('denied'))),
+    };
+    const card = createGifCard(testGif, store, clipboard, false);
+
+    card.element.click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(store.dispatch).toHaveBeenCalledWith({
+      type: 'SHOW_TOAST',
+      payload: { text: 'copy failed', variant: 'warning' },
+    });
+    expect(store.dispatch).not.toHaveBeenCalledWith({
       type: 'SHOW_TOAST',
       payload: 'copied to clipboard',
     });
@@ -158,6 +180,49 @@ describe('createGifCard', () => {
     expect(card.element.getAttribute('role')).toBe('button');
     expect(card.element.getAttribute('tabindex')).toBe('0');
     expect(card.element.getAttribute('aria-label')).toBe('Copy GIF URL');
+  });
+
+  it('uses an edit-mode accessible label and pressed state', () => {
+    const card = createGifCard(
+      testGif,
+      createMockStore({ editMode: true }),
+      createMockClipboard(),
+      true,
+    );
+    expect(card.element.getAttribute('aria-label')).toBe('Select GIF');
+    expect(card.element.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it.each(['Enter', ' '])('activates with the %s key', async (key) => {
+    const store = createMockStore();
+    const clipboard = createMockClipboard();
+    const card = createGifCard(testGif, store, clipboard, false);
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+
+    card.element.dispatchEvent(event);
+    await Promise.resolve();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(clipboard.writeText).toHaveBeenCalledWith(testGif.url);
+    expect(store.dispatch).toHaveBeenCalledWith({
+      type: 'SHOW_TOAST',
+      payload: 'copied to clipboard',
+    });
+  });
+
+  it('selects instead of copying when keyboard-activated in edit mode', () => {
+    const store = createMockStore({ editMode: true });
+    const clipboard = createMockClipboard();
+    const card = createGifCard(testGif, store, clipboard, false);
+
+    card.element.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    }));
+
+    expect(store.dispatch).toHaveBeenCalledWith({ type: 'SELECT_GIF', payload: 'gif-1' });
+    expect(clipboard.writeText).not.toHaveBeenCalled();
   });
 
   it('sets data-gif-id attribute', () => {

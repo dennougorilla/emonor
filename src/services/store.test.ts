@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { createStore, reduce, createInitialState } from './store';
 import type { AppState, Library, StorageService } from '../core/types';
 import { DEFAULT_TAGS } from '../core/constants';
@@ -8,8 +8,12 @@ function createLibrary(overrides: Partial<Library> = {}): Library {
 }
 
 function createMockStorage(): StorageService {
-  return { load: vi.fn(() => null), save: vi.fn() };
+  return { load: vi.fn(() => null), save: vi.fn(() => true) };
 }
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('createInitialState', () => {
   it('creates state with empty library when storage returns null', () => {
@@ -27,7 +31,7 @@ describe('createInitialState', () => {
     const saved = createLibrary({
       gifs: [{ id: '1', url: 'https://i.imgur.com/1.gif', tag: '😂' }],
     });
-    const storage: StorageService = { load: vi.fn(() => saved), save: vi.fn() };
+    const storage: StorageService = { load: vi.fn(() => saved), save: vi.fn(() => true) };
 
     const state = createInitialState(storage);
 
@@ -335,7 +339,7 @@ describe('reduce', () => {
       gifs: [{ id: 'x', url: 'https://i.imgur.com/x.gif', tag: '🔥' }],
     });
     const next = reduce(baseState, { type: 'APPLY_LIBRARY', payload: newLibrary });
-    expect(next.library).toBe(newLibrary);
+    expect(next.library).toEqual(newLibrary);
   });
 
   it('SHOW_DATA_MODAL opens modal', () => {
@@ -484,17 +488,90 @@ describe('createStore', () => {
   });
 
   it('persists SET_GIF_DIMENSIONS when dimensions change', () => {
+    vi.useFakeTimers();
     const storage: StorageService = {
       load: vi.fn(() => createLibrary({
         gifs: [{ id: 'x', url: 'https://i.imgur.com/x.gif', tag: '😂' }],
       })),
-      save: vi.fn(),
+      save: vi.fn(() => true),
     };
     const store = createStore(storage);
 
     store.dispatch({ type: 'SET_GIF_DIMENSIONS', payload: { id: 'x', width: 320, height: 240 } });
 
+    expect(storage.save).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(250);
     expect(storage.save).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('batches consecutive dimension updates into one save', () => {
+    vi.useFakeTimers();
+    const storage: StorageService = {
+      load: vi.fn(() => createLibrary({
+        gifs: [
+          { id: 'x', url: 'https://i.imgur.com/x.gif', tag: '😂' },
+          { id: 'y', url: 'https://i.imgur.com/y.gif', tag: '🔥' },
+        ],
+      })),
+      save: vi.fn(() => true),
+    };
+    const store = createStore(storage);
+
+    store.dispatch({ type: 'SET_GIF_DIMENSIONS', payload: { id: 'x', width: 320, height: 240 } });
+    vi.advanceTimersByTime(100);
+    store.dispatch({ type: 'SET_GIF_DIMENSIONS', payload: { id: 'y', width: 640, height: 360 } });
+    vi.advanceTimersByTime(249);
+
+    expect(storage.save).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(storage.save).toHaveBeenCalledTimes(1);
+    expect(storage.save).toHaveBeenCalledWith(expect.objectContaining({
+      gifs: expect.arrayContaining([
+        expect.objectContaining({ id: 'x', width: 320, height: 240 }),
+        expect.objectContaining({ id: 'y', width: 640, height: 360 }),
+      ]),
+    }));
+    vi.useRealTimers();
+  });
+
+  it('includes pending dimensions in the next user-initiated save', () => {
+    vi.useFakeTimers();
+    const storage: StorageService = {
+      load: vi.fn(() => createLibrary({
+        gifs: [{ id: 'x', url: 'https://i.imgur.com/x.gif', tag: '😂' }],
+      })),
+      save: vi.fn(() => true),
+    };
+    const store = createStore(storage);
+
+    store.dispatch({ type: 'SET_GIF_DIMENSIONS', payload: { id: 'x', width: 320, height: 240 } });
+    store.dispatch({ type: 'UPDATE_TAG', payload: { id: 'x', tag: '🔥' } });
+    vi.advanceTimersByTime(250);
+
+    expect(storage.save).toHaveBeenCalledTimes(1);
+    expect(storage.save).toHaveBeenCalledWith(expect.objectContaining({
+      gifs: [expect.objectContaining({ id: 'x', tag: '🔥', width: 320, height: 240 })],
+    }));
+    vi.useRealTimers();
+  });
+
+  it('rolls back dimension metadata when the batched save fails', () => {
+    vi.useFakeTimers();
+    const storage: StorageService = {
+      load: vi.fn(() => createLibrary({
+        gifs: [{ id: 'x', url: 'https://i.imgur.com/x.gif', tag: '😂' }],
+      })),
+      save: vi.fn(() => false),
+    };
+    const store = createStore(storage);
+
+    store.dispatch({ type: 'SET_GIF_DIMENSIONS', payload: { id: 'x', width: 320, height: 240 } });
+    vi.advanceTimersByTime(250);
+
+    expect(store.getState().library.gifs[0].width).toBeUndefined();
+    expect(store.getState().toast?.variant).toBe('warning');
+    vi.useRealTimers();
   });
 
   it('does not persist SET_GIF_DIMENSIONS for unknown gif id', () => {
@@ -502,12 +579,32 @@ describe('createStore', () => {
       load: vi.fn(() => createLibrary({
         gifs: [{ id: 'x', url: 'https://i.imgur.com/x.gif', tag: '😂' }],
       })),
-      save: vi.fn(),
+      save: vi.fn(() => true),
     };
     const store = createStore(storage);
 
     store.dispatch({ type: 'SET_GIF_DIMENSIONS', payload: { id: 'nonexistent', width: 320, height: 240 } });
 
     expect(storage.save).not.toHaveBeenCalled();
+  });
+
+  it('rolls back a library mutation and reports persistence failure', () => {
+    const storage: StorageService = {
+      load: vi.fn(() => null),
+      save: vi.fn(() => false),
+    };
+    const store = createStore(storage);
+
+    const persisted = store.dispatch({
+      type: 'ADD_GIF',
+      payload: { url: 'https://i.imgur.com/new.gif', tag: '😂' },
+    });
+
+    expect(persisted).toBe(false);
+    expect(store.getState().library.gifs).toHaveLength(0);
+    expect(store.getState().toast).toEqual(expect.objectContaining({
+      variant: 'warning',
+      text: expect.stringContaining('not saved'),
+    }));
   });
 });

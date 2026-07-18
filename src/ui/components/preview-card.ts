@@ -24,19 +24,27 @@ export function createPreviewCard(url: string, tag: string, store: Store): Compo
   img.alt = 'GIF preview';
   img.style.display = 'none';
 
-  img.addEventListener('load', () => {
+  let destroyed = false;
+  const isCurrentDraft = (): boolean => !destroyed && store.getState().draftUrl === url;
+
+  function handleLoad(): void {
+    if (!isCurrentDraft()) return;
     loading.style.display = 'none';
     errorEl.style.display = 'none';
     img.style.display = 'block';
     store.dispatch({ type: 'SET_DRAFT_PREVIEW_STATUS', payload: 'loaded' });
-  });
+  }
 
-  img.addEventListener('error', () => {
+  function handleError(): void {
+    if (!isCurrentDraft()) return;
     loading.style.display = 'none';
     img.style.display = 'none';
     errorEl.style.display = 'flex';
     store.dispatch({ type: 'SET_DRAFT_PREVIEW_STATUS', payload: 'error' });
-  });
+  }
+
+  img.addEventListener('load', handleLoad);
+  img.addEventListener('error', handleError);
 
   img.src = url;
   el.appendChild(img);
@@ -60,12 +68,14 @@ export function createPreviewCard(url: string, tag: string, store: Store): Compo
 
   // Enable button only when loaded
   const unsubscribe = store.subscribe((state) => {
-    confirmBtn.disabled = state.draftPreviewStatus !== 'loaded';
+    confirmBtn.disabled = state.draftUrl !== url || state.draftPreviewStatus !== 'loaded';
   });
 
   confirmBtn.addEventListener('click', () => {
-    if (store.getState().draftPreviewStatus !== 'loaded') return;
-    store.dispatch({ type: 'ADD_GIF', payload: { url, tag } });
+    const state = store.getState();
+    if (state.draftUrl !== url || state.draftPreviewStatus !== 'loaded') return;
+    const persisted = store.dispatch({ type: 'ADD_GIF', payload: { url, tag } });
+    if (persisted === false) return;
     const afterState = store.getState();
     if (afterState.lastAddDuplicate) {
       const existing = afterState.library.gifs.find(g => g.url === url);
@@ -82,5 +92,14 @@ export function createPreviewCard(url: string, tag: string, store: Store): Compo
 
   el.appendChild(bar);
 
-  return { element: el, destroy: unsubscribe };
+  return {
+    element: el,
+    destroy: () => {
+      destroyed = true;
+      img.removeEventListener('load', handleLoad);
+      img.removeEventListener('error', handleError);
+      img.removeAttribute('src');
+      unsubscribe();
+    },
+  };
 }

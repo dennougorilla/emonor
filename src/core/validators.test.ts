@@ -79,6 +79,11 @@ describe('isValidGifUrl', () => {
       expect(isValidGifUrl('https://example.com/gif/page')).toBe(false);
     });
 
+    it('rejects non-HTTP URL schemes', () => {
+      expect(isValidGifUrl('file:///tmp/image.gif')).toBe(false);
+      expect(isValidGifUrl('ftp://media.giphy.com/image.gif')).toBe(false);
+    });
+
     it('is case-insensitive for extensions', () => {
       expect(isValidGifUrl('https://example.com/image.GIF')).toBe(true);
     });
