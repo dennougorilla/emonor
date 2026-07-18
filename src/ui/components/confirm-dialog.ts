@@ -33,7 +33,8 @@ export function createConfirmDialog(store: Store): Component {
   deleteBtn.addEventListener('click', () => {
     const gifId = deleteBtn.dataset.gifId;
     if (gifId) {
-      store.dispatch({ type: 'REMOVE_GIF', payload: gifId });
+      const persisted = store.dispatch({ type: 'REMOVE_GIF', payload: gifId });
+      if (persisted === false) return;
       store.dispatch({ type: 'SHOW_TOAST', payload: 'removed' });
     }
   });

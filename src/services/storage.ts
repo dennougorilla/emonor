@@ -1,5 +1,6 @@
 import type { Library, StorageService } from '../core/types';
 import { STORAGE_KEY } from '../core/constants';
+import { validateLibrary } from '../core/import-export';
 
 // @specs/DOMAIN.md § 5.2 - localStorage read/write + QuotaExceeded handling
 export function createStorageService(): StorageService {
@@ -9,23 +10,18 @@ export function createStorageService(): StorageService {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return null;
 
-        const data = JSON.parse(raw);
-        if (!data || typeof data !== 'object') return null;
-        if (!('version' in data) || !('tags' in data) || !('gifs' in data)) return null;
-
-        return data as Library;
+        return validateLibrary(JSON.parse(raw));
       } catch {
         return null;
       }
     },
 
-    save(library: Library): void {
+    save(library: Library): boolean {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(library));
-      } catch (e) {
-        if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-          // Storage full — could notify user in future
-        }
+        return true;
+      } catch {
+        return false;
       }
     },
   };

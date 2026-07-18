@@ -110,7 +110,8 @@ export function createHeader(store: Store): Component {
     }
 
     const tag = currentState.activeTag ?? '📂';
-    store.dispatch({ type: 'ADD_GIF', payload: { url, tag } });
+    const persisted = store.dispatch({ type: 'ADD_GIF', payload: { url, tag } });
+    if (persisted === false) return;
     const afterState = store.getState();
     if (afterState.lastAddDuplicate) {
       const existing = afterState.library.gifs.find(g => g.url === url);

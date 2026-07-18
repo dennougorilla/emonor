@@ -49,6 +49,24 @@ describe('createStorageService', () => {
       const service = createStorageService();
       expect(service.load()).toBeNull();
     });
+
+    it('returns null for structurally invalid library members', () => {
+      mockStorage[STORAGE_KEY] = JSON.stringify({
+        version: '1.0',
+        tags: [null],
+        gifs: [],
+      });
+
+      const service = createStorageService();
+      expect(service.load()).toBeNull();
+    });
+
+    it('returns null for an unsupported library version', () => {
+      mockStorage[STORAGE_KEY] = JSON.stringify({ version: '2.0', tags: [], gifs: [] });
+
+      const service = createStorageService();
+      expect(service.load()).toBeNull();
+    });
   });
 
   describe('save', () => {
@@ -56,8 +74,9 @@ describe('createStorageService', () => {
       const service = createStorageService();
       const library = createLibrary();
 
-      service.save(library);
+      const saved = service.save(library);
 
+      expect(saved).toBe(true);
       expect(localStorage.setItem).toHaveBeenCalledWith(
         STORAGE_KEY,
         JSON.stringify(library)
@@ -76,8 +95,7 @@ describe('createStorageService', () => {
       const service = createStorageService();
       const library = createLibrary();
 
-      // Should not throw
-      expect(() => service.save(library)).not.toThrow();
+      expect(service.save(library)).toBe(false);
     });
   });
 });

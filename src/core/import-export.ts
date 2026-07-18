@@ -1,31 +1,142 @@
-import type { Library, ImportPreview } from './types';
-import { SYSTEM_TAG_EMOJI } from './constants';
+import type { EmojiTag, GIF, Library, ImportPreview } from './types';
+import { MAX_TAGS, SYSTEM_TAG_EMOJI } from './constants';
 import { isValidHexColor, isValidFilterSize } from './config-validators';
+import { isValidEmoji, isValidGifUrl } from './validators';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseTag(value: unknown, index: number): EmojiTag {
+  if (!isRecord(value)) {
+    throw new Error(`Invalid tag at index ${index}`);
+  }
+
+  const emoji = value.emoji;
+  const label = value.label;
+  if (typeof emoji !== 'string' || !isValidEmoji(emoji)) {
+    throw new Error(`Invalid tag emoji at index ${index}`);
+  }
+  if (typeof label !== 'string' || label.trim() === '') {
+    throw new Error(`Invalid tag label at index ${index}`);
+  }
+
+  return { emoji, label: label.trim() };
+}
+
+function parseGif(value: unknown, index: number): GIF {
+  if (!isRecord(value)) {
+    throw new Error(`Invalid GIF at index ${index}`);
+  }
+
+  const id = value.id;
+  const url = value.url;
+  const tag = value.tag;
+  if (typeof id !== 'string' || id.trim() === '') {
+    throw new Error(`Invalid GIF id at index ${index}`);
+  }
+  if (typeof url !== 'string' || !isValidGifUrl(url.trim())) {
+    throw new Error(`Invalid GIF URL at index ${index}`);
+  }
+  if (typeof tag !== 'string' || tag === '') {
+    throw new Error(`Invalid GIF tag at index ${index}`);
+  }
+
+  const hasWidth = value.width !== undefined;
+  const hasHeight = value.height !== undefined;
+  if (hasWidth !== hasHeight) {
+    throw new Error(`Incomplete GIF dimensions at index ${index}`);
+  }
+
+  let dimensions: Pick<GIF, 'width' | 'height'> = {};
+  if (hasWidth && hasHeight) {
+    const width = value.width;
+    const height = value.height;
+    if (
+      !Number.isInteger(width) || !Number.isInteger(height) ||
+      (width as number) <= 0 || (height as number) <= 0 ||
+      (width as number) >= 100000 || (height as number) >= 100000
+    ) {
+      throw new Error(`Invalid GIF dimensions at index ${index}`);
+    }
+    dimensions = { width: width as number, height: height as number };
+  }
+
+  return { id: id.trim(), url: url.trim(), tag, ...dimensions };
+}
+
+/**
+ * Validate and normalize data crossing a persistence boundary.
+ * This is intentionally shared by import, raw editing, and localStorage loading.
+ */
+export function validateLibrary(data: unknown): Library {
+  if (!isRecord(data)) {
+    throw new Error('Invalid import data');
+  }
+  if (data.version !== '1.0') {
+    throw new Error('Unsupported version');
+  }
+  if (!Array.isArray(data.tags)) {
+    throw new Error('Missing or invalid tags field');
+  }
+  if (!Array.isArray(data.gifs)) {
+    throw new Error('Missing or invalid gifs field');
+  }
+  if (data.tags.length > MAX_TAGS) {
+    throw new Error(`Too many tags (maximum ${MAX_TAGS})`);
+  }
+
+  const tags = data.tags.map(parseTag);
+  const tagEmojis = new Set<string>();
+  for (const tag of tags) {
+    if (tagEmojis.has(tag.emoji)) {
+      throw new Error(`Duplicate tag: ${tag.emoji}`);
+    }
+    tagEmojis.add(tag.emoji);
+  }
+
+  if (!tagEmojis.has(SYSTEM_TAG_EMOJI)) {
+    if (tags.length >= MAX_TAGS) {
+      throw new Error(`Too many tags (maximum ${MAX_TAGS}, including ${SYSTEM_TAG_EMOJI})`);
+    }
+    tags.push({ emoji: SYSTEM_TAG_EMOJI, label: 'Other' });
+    tagEmojis.add(SYSTEM_TAG_EMOJI);
+  }
+
+  const parsedGifs = data.gifs.map(parseGif);
+  const gifIds = new Set<string>();
+  const gifUrls = new Set<string>();
+  const gifs = parsedGifs.map((gif) => {
+    if (gifIds.has(gif.id)) {
+      throw new Error(`Duplicate GIF id: ${gif.id}`);
+    }
+    if (gifUrls.has(gif.url)) {
+      throw new Error(`Duplicate GIF URL: ${gif.url}`);
+    }
+    gifIds.add(gif.id);
+    gifUrls.add(gif.url);
+    return tagEmojis.has(gif.tag) ? gif : { ...gif, tag: SYSTEM_TAG_EMOJI };
+  });
+
+  if (data.accentColor !== undefined && !isValidHexColor(data.accentColor)) {
+    throw new Error('Invalid accentColor (use #RGB or #RRGGBB)');
+  }
+  if (data.filterSize !== undefined && !isValidFilterSize(data.filterSize)) {
+    throw new Error('Invalid filterSize (use small/medium/large)');
+  }
+
+  return {
+    version: '1.0',
+    tags,
+    gifs,
+    ...(data.accentColor !== undefined && { accentColor: data.accentColor }),
+    ...(data.filterSize !== undefined && { filterSize: data.filterSize }),
+  };
+}
 
 // @specs/DOMAIN.md § 5.3 - Import replace logic
 export function replaceImport(imported: Library): Library {
-  if (imported.version !== '1.0') {
-    throw new Error('Unsupported version');
-  }
-
-  const hasSystemTag = imported.tags.some(t => t.emoji === SYSTEM_TAG_EMOJI);
-  const tags = hasSystemTag
-    ? imported.tags
-    : [...imported.tags, { emoji: SYSTEM_TAG_EMOJI, label: 'Other' }];
-
-  const validEmojis = new Set(tags.map(t => t.emoji));
-  const gifs = imported.gifs.map(g =>
-    validEmojis.has(g.tag) ? g : { ...g, tag: SYSTEM_TAG_EMOJI }
-  );
-
-  // Preserve config fields if valid
-  return {
-    version: '1.0',
-    tags: [...tags],
-    gifs,
-    ...(imported.accentColor && isValidHexColor(imported.accentColor) && { accentColor: imported.accentColor }),
-    ...(imported.filterSize && isValidFilterSize(imported.filterSize) && { filterSize: imported.filterSize }),
-  };
+  return validateLibrary(imported);
 }
 
 // @specs/DOMAIN.md § 3.7 - Export
@@ -44,35 +155,7 @@ export function computeImportPreview(existing: Library, imported: Library): Impo
   };
 }
 
-// @specs/DOMAIN.md § 3.7 - Import (parse + validate structure)
+// @specs/DOMAIN.md § 3.7 - Import (parse + full runtime validation)
 export function parseImport(json: string): Library {
-  const data = JSON.parse(json);
-
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid import data');
-  }
-  if (!('version' in data) || typeof data.version !== 'string') {
-    throw new Error('Missing or invalid version field');
-  }
-  if (!('tags' in data) || !Array.isArray(data.tags)) {
-    throw new Error('Missing or invalid tags field');
-  }
-  if (!('gifs' in data) || !Array.isArray(data.gifs)) {
-    throw new Error('Missing or invalid gifs field');
-  }
-
-  // Validate optional config fields if present
-  if ('accentColor' in data && data.accentColor !== undefined) {
-    if (!isValidHexColor(data.accentColor)) {
-      throw new Error('Invalid accentColor (use #RGB or #RRGGBB)');
-    }
-  }
-
-  if ('filterSize' in data && data.filterSize !== undefined) {
-    if (!isValidFilterSize(data.filterSize)) {
-      throw new Error('Invalid filterSize (use small/medium/large)');
-    }
-  }
-
-  return data as Library;
+  return validateLibrary(JSON.parse(json));
 }

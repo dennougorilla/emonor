@@ -134,7 +134,8 @@ export function createDataModalImport(store: Store): ImportComponent {
   importBtn.addEventListener('click', () => {
     const prev = store.getState().importPreview;
     if (!prev) return;
-    store.dispatch({ type: 'IMPORT_LIBRARY', payload: prev.parsedLibrary });
+    const persisted = store.dispatch({ type: 'IMPORT_LIBRARY', payload: prev.parsedLibrary });
+    if (persisted === false) return;
     store.dispatch({ type: 'SHOW_TOAST', payload: `imported ${prev.importedGifsCount} gifs` });
   });
 

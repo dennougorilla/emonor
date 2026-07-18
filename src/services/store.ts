@@ -5,6 +5,7 @@ import { addCustomTag, removeCustomTag } from '../core/tag-operations';
 import { replaceImport } from '../core/import-export';
 
 let toastCounter = 0;
+const DIMENSION_SAVE_DELAY_MS = 250;
 
 function createDefaultLibrary(): Library {
   return { version: '1.0', tags: [...DEFAULT_TAGS], gifs: [] };
@@ -101,10 +102,18 @@ export function reduce(state: AppState, action: Action): AppState {
       return { ...state, toast: null };
     case 'IMPORT_LIBRARY': {
       const library = replaceImport(action.payload);
-      return { ...state, library, dataModalOpen: false, importPreview: null };
+      const activeTag = state.activeTag && library.tags.some(tag => tag.emoji === state.activeTag)
+        ? state.activeTag
+        : null;
+      return { ...state, library, activeTag, dataModalOpen: false, importPreview: null };
     }
-    case 'APPLY_LIBRARY':
-      return { ...state, library: action.payload };
+    case 'APPLY_LIBRARY': {
+      const library = replaceImport(action.payload);
+      const activeTag = state.activeTag && library.tags.some(tag => tag.emoji === state.activeTag)
+        ? state.activeTag
+        : null;
+      return { ...state, library, activeTag };
+    }
     case 'SHOW_DATA_MODAL':
       return { ...state, dataModalOpen: action.payload, importPreview: action.payload ? state.importPreview : null };
     case 'SET_DATA_MODAL_TAB':
@@ -135,20 +144,82 @@ export function reduce(state: AppState, action: Action): AppState {
 
 export function createStore(storage: StorageService): Store {
   let state = createInitialState(storage);
+  let lastPersistedLibrary = state.library;
+  let dimensionSaveTimer: ReturnType<typeof setTimeout> | null = null;
   const subscribers = new Set<Subscriber>();
+
+  function notify(): void {
+    subscribers.forEach(fn => fn(state));
+  }
+
+  function persist(library: Library): boolean {
+    try {
+      return storage.save(library) !== false;
+    } catch {
+      return false;
+    }
+  }
+
+  function withPersistenceError(baseState: AppState): AppState {
+    return {
+      ...baseState,
+      library: lastPersistedLibrary,
+      toast: {
+        text: 'storage unavailable — changes not saved',
+        id: ++toastCounter,
+        variant: 'warning',
+      },
+    };
+  }
+
+  function cancelDimensionSave(): void {
+    if (dimensionSaveTimer) {
+      clearTimeout(dimensionSaveTimer);
+      dimensionSaveTimer = null;
+    }
+  }
+
+  function scheduleDimensionSave(): void {
+    cancelDimensionSave();
+    dimensionSaveTimer = setTimeout(() => {
+      dimensionSaveTimer = null;
+      if (persist(state.library)) {
+        lastPersistedLibrary = state.library;
+        return;
+      }
+      state = withPersistenceError(state);
+      notify();
+    }, DIMENSION_SAVE_DELAY_MS);
+  }
 
   return {
     getState: () => state,
     dispatch: (action: Action) => {
-      const prevLibrary = state.library;
-      state = reduce(state, action);
+      const previousState = state;
+      const previousLibrary = previousState.library;
+      const nextState = reduce(previousState, action);
+      const libraryChanged = nextState.library !== previousLibrary;
 
-      // Persist only when library data changes
-      if (state.library !== prevLibrary) {
-        storage.save(state.library);
+      if (libraryChanged && action.type === 'SET_GIF_DIMENSIONS') {
+        state = nextState;
+        scheduleDimensionSave();
+        notify();
+        return true;
       }
 
-      subscribers.forEach(fn => fn(state));
+      if (libraryChanged) {
+        cancelDimensionSave();
+        if (!persist(nextState.library)) {
+          state = withPersistenceError(previousState);
+          notify();
+          return false;
+        }
+        lastPersistedLibrary = nextState.library;
+      }
+
+      state = nextState;
+      notify();
+      return true;
     },
     subscribe: (fn: Subscriber) => {
       subscribers.add(fn);

@@ -99,7 +99,8 @@ export type Subscriber = (state: AppState) => void;
 
 export interface Store {
   getState(): AppState;
-  dispatch(action: Action): void;
+  /** Returns false when a library mutation could not be persisted. */
+  dispatch(action: Action): boolean;
   subscribe(fn: Subscriber): () => void;
 }
 
@@ -110,5 +111,5 @@ export interface ClipboardService {
 
 export interface StorageService {
   load(): Library | null;
-  save(library: Library): void;
+  save(library: Library): boolean;
 }

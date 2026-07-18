@@ -92,7 +92,8 @@ export function createDataModalExport(store: Store, clipboard: ClipboardService)
     if (textarea.value === originalJson) return;
     try {
       const parsed = parseImport(textarea.value);
-      store.dispatch({ type: 'APPLY_LIBRARY', payload: parsed });
+      const persisted = store.dispatch({ type: 'APPLY_LIBRARY', payload: parsed });
+      if (persisted === false) return;
       store.dispatch({ type: 'SHOW_TOAST', payload: 'applied' });
       refresh();
     } catch (e) {
